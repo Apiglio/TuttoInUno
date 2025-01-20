@@ -1,0 +1,109 @@
+object Form_TuttoInUno: TForm_TuttoInUno
+  Left = 1479
+  Height = 278
+  Top = 558
+  Width = 584
+  Caption = 'Tutto In Uno'
+  ClientHeight = 278
+  ClientWidth = 584
+  DesignTimePPI = 144
+  OnCreate = FormCreate
+  Position = poDefault
+  LCLVersion = '1.8.4.0'
+  inline Frame_AufScript1: TFrame_AufScript
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = Owner
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
+    Height = 278
+    Width = 584
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ClientHeight = 278
+    ClientWidth = 584
+    Constraints.MinWidth = 300
+    inherited ProgressBar: TProgressBar
+      AnchorSideRight.Control = Frame_AufScript1
+      AnchorSideBottom.Control = Frame_AufScript1
+      Left = 384
+      Height = 24
+      Top = 242
+      Width = 182
+      BorderSpacing.Left = 18
+      BorderSpacing.Top = 12
+      BorderSpacing.Right = 18
+      BorderSpacing.Bottom = 12
+    end
+    inherited Memo_out: TMemo
+      AnchorSideTop.Control = Frame_AufScript1
+      AnchorSideRight.Control = Frame_AufScript1
+      Left = 246
+      Height = 230
+      Width = 338
+      Constraints.MinWidth = 135
+    end
+    inherited Memo_cmd: TSynEdit
+      AnchorSideLeft.Control = Frame_AufScript1
+      AnchorSideTop.Control = Frame_AufScript1
+      Height = 230
+      Width = 240
+      Constraints.MinWidth = 135
+      Gutter.Width = 62
+      inherited SynLeftGutterPartList1: TSynGutterPartList
+        inherited SynGutterCodeFolding1: TSynGutterCodeFolding
+          AutoSize = False
+          Width = 15
+        end
+      end
+    end
+    inherited Splitter_Vert: TSplitter
+      AnchorSideTop.Control = Frame_AufScript1
+      Left = 240
+      Height = 230
+      Width = 6
+    end
+    inherited Splitter_Horiz: TSplitter
+      AnchorSideLeft.Control = Frame_AufScript1
+      AnchorSideRight.Control = Frame_AufScript1
+      Height = 6
+      Top = 564
+      Width = 584
+    end
+    inherited Button_ScriptLoad: TBitBtn
+      AnchorSideBottom.Control = Frame_AufScript1
+      Height = 48
+      Top = 230
+      Width = 72
+    end
+    inherited Button_ScriptSave: TBitBtn
+      AnchorSideBottom.Control = Frame_AufScript1
+      Left = 72
+      Height = 48
+      Top = 230
+      Width = 72
+    end
+    inherited Button_run: TBitBtn
+      AnchorSideBottom.Control = Frame_AufScript1
+      Left = 150
+      Height = 48
+      Top = 230
+      Width = 72
+      BorderSpacing.Left = 6
+    end
+    inherited Button_pause: TBitBtn
+      AnchorSideBottom.Control = Frame_AufScript1
+      Left = 222
+      Height = 48
+      Top = 230
+      Width = 72
+    end
+    inherited Button_stop: TBitBtn
+      AnchorSideBottom.Control = Frame_AufScript1
+      Left = 294
+      Height = 48
+      Top = 230
+      Width = 72
+    end
+  end
+end

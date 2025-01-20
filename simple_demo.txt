@@ -1,0 +1,106 @@
+//最简易规则案例
+//
+//两个玩家交替向桌面放置1-3枚棋子
+//桌面总共16个空间（无序）
+//占满桌面的玩家获胜
+
+游戏设置:
+@playerClass = newPlayerClass "基础玩家"
+@playerClass . defineAttribute "颜色"
+@p1 = newPlayer @playerClass, "玩家1"
+@p1 . setAttribute "颜色", "黑色"
+@p2 = newPlayer @playerClass, "玩家2"
+@p2 . setAttribute "颜色", "白色"
+@playerlist = newList @p1, @p2
+
+@piece = newItemClass "棋子"
+@piece . defineAttribute "颜色"
+
+//@desktop是预定义的桌面，无特殊说明时创建的区域以此为父节点
+@board = newRegion "棋盘"
+@board . unsort!           //区域默认为一维有序列表
+@board . size= 16          //不设置长度则为不定长
+
+//开局
+随机定先:
+@p = selectRandom @playerlist
+//回合开始
+玩家行动:
+@color = getAttribute @p, "颜色"
+@number = askForNumber @p, 1, 3
+放置棋子:
+@item = newItem @piece
+@item . setAttribute "颜色", @color
+@item . moveTo @board
+sub @number, 1
+@space = emptyLength @board
+cje @space, 0 ,:确定胜负
+ncje @number, 0, :放置棋子
+@p = selectNext @playerlist, @p
+jmp :玩家行动
+
+确定胜负:
+win @p
+
+
+
+
+
+
+
+
+
+//定义游戏内容原型
+proto = newPlayerProto
+proto . addTag "玩家"
+proto . setAttribute "颜色",""
+piece = newItemProto
+piece . addTag "棋子"
+piece . setAttribute "颜色",""
+
+//生成玩家循环
+p1 = newPlayer proto "玩家1"
+p2 = newPlayer proto "玩家2"
+p1 . setAttribute "颜色","黑色"
+p2 . setAttribute "颜色","白色"
+players = newPlayerLoop p1, p2
+
+//生成游戏区域
+board = newRegion "棋盘"
+board . addTag "棋盘"
+
+//开局定先
+players . rselect
+
+//回合
+round:
+p = currentPlayer players
+
+color = getAttribute p, "颜色"
+number = askForNumber p, 1, 3
+moves:
+tmp = newItem piece "棋子"
+tmp . setAttribute "颜色", color
+tmp . moveTo board
+number . sub 1
+total = itemcount board
+total . ncjl 16 :wining
+number . cjm 0 :moves
+
+players . nextplayer
+jmp :round
+
+//游戏结束
+wining:
+p . win
+
+
+
+
+
+
+
+
+
+
+

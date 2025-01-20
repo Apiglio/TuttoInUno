@@ -1,0 +1,8 @@
+/lib
+/backup
+backup/*
+*/backup/*
+*.auf
+*.exe
+*.bak
+TuttoInUno
