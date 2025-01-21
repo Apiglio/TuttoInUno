@@ -271,19 +271,51 @@ begin
     AufScpt.writeln(Format('成功创建物品：%s',[TItem(item).Value.AsString]));
 end;
 
-procedure Item_moveTo(Sender:TObject); // item . moveTo region
+procedure Item_moveTo(Sender:TObject); // item . moveTo region coords...
 var AufScpt:TAufScript;
     AAuf:TAuf;
     item,region:TObject;
-    player:TPlayer;
+    paramNo:integer;
+    coords:array of TRegionIndex;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
     if not AAuf.CheckArgs(3) then exit;
     if not AAuf.TryArgToObject(1,TItem,item) then exit;
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
-    TItem(item).MoveTo(region as TTuttoInUnoData,[]);
+    SetLength(coords,AAuf.ArgsCount-3);
+    try
+        for paramNo:=3 to AAuf.ArgsCount-1 do begin
+            if not AAuf.TryArgToLong(paramNo,coords[paramNo-3]) then exit;
+        end;
+        TItem(item).MoveTo(region as TTuttoInUnoData,coords);
+    finally
+        SetLength(coords,0);
+    end;
     AufScpt.writeln(Format('将物品%s移动到%s',[TItem(item).Value.AsString, TRegion(region).Value.AsString]));
+end;
+
+procedure Item_jumpIfIn(Sender:TObject); // item . in? region :addr || item . in? region :addr
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    item,region:TObject;
+    addr:pRam;
+    method_name:string;
+    res,is_not,is_call:boolean;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TItem,item) then exit;
+    if not AAuf.TryArgToObject(2,TRegion,region) then exit;
+    if not AAuf.TryArgToAddr(3,addr) then exit;
+    method_name:=AAuf.args[0];
+    compare_jump_mode(method_name,is_not,is_call);
+    res:=TRegion(region).HasItem(TItem(item));
+    if res xor is_not then begin
+        if is_call then AAuf.Script.push_addr(AufScpt.ScriptLines,AufScpt.ScriptName,addr)
+        else AufScpt.jump_addr(addr);
+    end;
 end;
 
 procedure newRegion(Sender:TObject); // region = newRegion name dimension
@@ -326,6 +358,31 @@ begin
     AufScpt.writeln(Format('区域“%s”内的物品数量为：%d',[TRegion(region).Value.AsString, data.Value.AsInteger]));
 end;
 
+procedure Region_itemAt(Sender:TObject); // item = itemAt region coords...
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    item,region:TObject;
+    paramNo:integer;
+    coords:array of TRegionIndex;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TRegion,region) then exit;
+    SetLength(coords,AAuf.ArgsCount-3);
+    try
+        for paramNo:=3 to AAuf.ArgsCount-1 do begin
+            if not AAuf.TryArgToLong(paramNo,coords[paramNo-3]) then exit;
+        end;
+        item:=TRegion(region).GetItem(coords);
+        obj_to_arv(item,arv);
+    finally
+        SetLength(coords,0);
+    end;
+end;
+
 procedure askForNumber(Sender:TObject); // number = askForNumber player min max
 var AufScpt:TAufScript;
     AAuf:TAuf;
@@ -344,6 +401,27 @@ begin
     TData(data).Value.AsInteger:=TPlayer(player).AskForNumber(nmin,nmax);
     obj_to_arv(data,arv);
     AufScpt.writeln('玩家“'+TPlayer(player).Value.AsString+'”选择数字'+IntToStr(TData(data).Value.AsInteger));
+end;
+
+procedure askForItem(Sender:TObject); // number = askForItem player tag
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    player,item:TObject;
+    tag:string;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(4) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TPlayer,player) then exit;
+    if not AAuf.TryArgToString(3,tag) then exit;
+    item:=TPlayer(player).AskForItem(tag);
+    obj_to_arv(item,arv);
+    if item<>nil then
+        AufScpt.writeln(Format('玩家“%s”选择物品“%s”',[TPlayer(player).Value.AsString,TItem(item).Value.AsString]))
+    else
+        AufScpt.writeln('玩家“'+TPlayer(player).Value.AsString+'”未选择物品');
 end;
 
 procedure Data_new(Sender:TObject); // data = newData value
@@ -606,7 +684,6 @@ var AufScpt:TAufScript;
     method_name,compare_result:string;
     is_not,is_call:boolean;
     addr:pRam;
-    poss:integer;
     procedure switch_addr(addr:dword;iscall:boolean);
     begin
         if iscall then AAuf.Script.push_addr(AufScpt.ScriptLines,AufScpt.ScriptName,addr)
@@ -648,6 +725,16 @@ begin
 
 end;
 
+procedure TuttoFree(Sender:TObject); // tuttoFree
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    TTuttoInUnoData.ClearTotalInstances;
+    AufScpt.writeln('析构所有TuttoInUnoData实例（效果似乎并不好）');
+end;
+
 procedure GenerateAufScriptFunction(AufScpt:TAufScript);
 begin
     with AufScpt do begin
@@ -666,15 +753,21 @@ begin
         add_func('tiu.playerloop.nextplayer',@PlayerLoop_nextPlayer,'','下一个玩家');
         add_func('currentplayer',@PlayerLoop_currentPlayer,'','返回当前玩家',TPlayer);
 
-
         add_func('newitemproto',@newItemPrototype,'','创建物品原型',TItem);
         add_func('newitem',@newItem,'物品原型,物品名称','创建新物品',TItem);
         add_func('tiu.item.moveto',@Item_moveTo,'','移动物品到区域');
+        add_func('tiu.item.in?',@Item_jumpIfIn,'','判断物品是否在区域内，在则跳转');
+        add_func('tiu.item.nin?',@Item_jumpIfIn,'','判断物品是否在区域内，不在则跳转');
+        add_func('tiu.item.in?c',@Item_jumpIfIn,'','判断物品是否在区域内，在则跳转，并压栈');
+        add_func('tiu.item.nin?c',@Item_jumpIfIn,'','判断物品是否在区域内，不在则跳转，并压栈');
 
         add_func('newregion',@newRegion,'维度','创建新区域',TRegion);
         add_func('itemcount',@Region_itemCount,'','返回区域内物品数量',TData);
+        add_func('itemat',@Region_itemAt,'','返回区域内指定坐标的物品',TItem);
+
 
         add_func('askfornumber',@askForNumber,'玩家,最小值,最大值','询问玩家数量',TData);
+        add_func('askforitem',@askForItem,'玩家,标签','询问玩家物品',TItem);
 
         //Data运算
         add_func('newdata',@Data_new,'value','创建新Data数值',TData);
@@ -688,24 +781,32 @@ begin
 
         add_func('tiu.data.cje',@Data_cj,'A,B,:addr','A==B则跳转');
         add_func('tiu.data.ncje',@Data_cj,'A,B,:addr','A<>B则跳转');
-        add_func('tiu.data.cjl',@Data_cj,'A,B,:addr','A==B则跳转');
-        add_func('tiu.data.ncjl',@Data_cj,'A,B,:addr','A<>B则跳转');
-        add_func('tiu.data.cjm',@Data_cj,'A,B,:addr','A==B则跳转');
-        add_func('tiu.data.ncjm',@Data_cj,'A,B,:addr','A<>B则跳转');
+        add_func('tiu.data.cjl',@Data_cj,'A,B,:addr','A<B则跳转');
+        add_func('tiu.data.ncjl',@Data_cj,'A,B,:addr','A>=B则跳转');
+        add_func('tiu.data.cjm',@Data_cj,'A,B,:addr','A>B则跳转');
+        add_func('tiu.data.ncjm',@Data_cj,'A,B,:addr','A<=B则跳转');
 
-        add_func('tiu.data.cjec',@Data_cj,'A,B,:addr','A==B则跳转');
-        add_func('tiu.data.ncjec',@Data_cj,'A,B,:addr','A<>B则跳转');
-        add_func('tiu.data.cjlc',@Data_cj,'A,B,:addr','A==B则跳转');
-        add_func('tiu.data.ncjlc',@Data_cj,'A,B,:addr','A<>B则跳转');
-        add_func('tiu.data.cjmc',@Data_cj,'A,B,:addr','A==B则跳转');
-        add_func('tiu.data.ncjmc',@Data_cj,'A,B,:addr','A<>B则跳转');
+        add_func('tiu.data.cjec',@Data_cj,'A,B,:addr','A==B则跳转，并压栈');
+        add_func('tiu.data.ncjec',@Data_cj,'A,B,:addr','A<>B则跳转，并压栈');
+        add_func('tiu.data.cjlc',@Data_cj,'A,B,:addr','A<B则跳转，并压栈');
+        add_func('tiu.data.ncjlc',@Data_cj,'A,B,:addr','A>=B则跳转，并压栈');
+        add_func('tiu.data.cjmc',@Data_cj,'A,B,:addr','A>B则跳转，并压栈');
+        add_func('tiu.data.ncjmc',@Data_cj,'A,B,:addr','A<=B则跳转，并压栈');
+
+        add_func('tuttofree',@TuttoFree,'','析构所有TuttoInUno数据实例');
+
 
         //高亮显示占用
         add_func('setattribute',@func_nil,'','仅用于高亮方案占位');
         add_func('rselect',@func_nil,'','仅用于高亮方案占位');
+        add_func('nextplayer',@func_nil,'','仅用于高亮方案占位');
         add_func('addtag',@func_nil,'','仅用于高亮方案占位');
         add_func('deltag',@func_nil,'','仅用于高亮方案占位');
         add_func('moveto',@func_nil,'','仅用于高亮方案占位');
+        add_func('in?',@func_nil,'','仅用于高亮方案占位');
+        add_func('nin?',@func_nil,'','仅用于高亮方案占位');
+        add_func('in?c',@func_nil,'','仅用于高亮方案占位');
+        add_func('nin?c',@func_nil,'','仅用于高亮方案占位');
 
 
     end;

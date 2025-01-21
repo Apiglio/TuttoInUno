@@ -5,14 +5,14 @@ unit player;
 interface
 
 uses
-    Classes, SysUtils, auf_type_base, basic;
+    Classes, SysUtils, auf_type_base, basic, item;
 
 type
 
     TPlayer = class(TTuttoInUnoData)
     public
         function AskForNumber(min_value, max_value:longint):Longint;
-        function AskForItem(Tag:String):TTuttoInUnoData; unimplemented;
+        function AskForItem(Tag:String):TTuttoInUnoData;
         procedure Win;
     public
         class function AufTypeName:String; override;
@@ -48,8 +48,25 @@ begin
 end;
 
 function TPlayer.AskForItem(Tag:String):TTuttoInUnoData;
+var idx,res:integer;
+    ItemList:TStringList;
+    tmpItem:TObject;
 begin
     result:=nil;
+    ItemList:=TStringList.Create;
+    try
+        for idx:=TAufBase.Class_InstanceList.Count-1 downto 0 do begin
+            tmpItem:=TObject(TItem.Class_InstanceList.Items[idx]);
+            if tmpItem is TItem then begin
+                if not TItem(tmpItem).HasTag(Tag) then continue;
+                ItemList.AddObject(TItem(tmpItem).Value.AsString, tmpItem);
+            end;
+        end;
+        res:=InputCombo(Format('玩家“%s”选择物品',[Self.FValue.AsString]),'请选择',ItemList);
+        if res<0 then result:=nil else result:=ItemList.Objects[res] as TTuttoInUnoData;
+    finally
+        ItemList.Free;
+    end;
 end;
 
 procedure TPlayer.Win;

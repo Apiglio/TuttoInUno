@@ -442,6 +442,7 @@ end;
 
 constructor TTuttoInUnoData.Create;
 begin
+    inherited Create;
     FAttributeMap:=TStringList.Create;
     FAttributeMap.Sorted:=true;
     FTags:=TStringList.Create;
