@@ -29,22 +29,25 @@ type
         procedure SetMaxIndex(Index:Integer;AValue:TRegionIndex);
         function GetItemCount:Integer;
     public
-        function ItemIndice(Item:TTuttoInUnoData):PRegionIndex;
+        function ItemIndice(Item:TTuttoInUnoData):TRegionCoords;
         function HasItem(Item:TTuttoInUnoData):Boolean;
-        function GetItem(Indice:array of TRegionIndex):TTuttoInUnoData;
-        function AddItem(Item:TTuttoInUnoData;Indice:array of TRegionIndex):boolean;
+        function GetItem(Indice:TRegionCoords):TTuttoInUnoData;
+        function AddItem(Item:TTuttoInUnoData;Indice:TRegionCoords):boolean;
         function RemoveItem(Item:TTuttoInUnoData):Boolean;
-        function DeleteItem(Indice:array of TRegionIndex):Boolean;
+        function DeleteItem(Indice:TRegionCoords):Boolean;
         property MinIndex[Index:Integer]:TRegionIndex read GetMinIndex write SetMinIndex;
         property MaxIndex[Index:Integer]:TRegionIndex read GetMaxIndex write SetMaxIndex;
         property ItemCount:Integer read GetItemCount;
+        property Dimension:Integer read FDimension;
     public
-        constructor Create(Dimension:Integer);
+        constructor Create(ADimension:Integer);
         destructor Destroy; override;
         class function AufTypeName:String; override;
     end;
 
+
 implementation
+
 
 { TRegion }
 
@@ -77,17 +80,18 @@ begin
     result:=FItemsList.Count;
 end;
 
-function TRegion.ItemIndice(Item:TTuttoInUnoData):PRegionIndex;
+function TRegion.ItemIndice(Item:TTuttoInUnoData):TRegionCoords;
 var tmpRec:PRegionItemRecord;
     idx:Integer;
 begin
     if FDimension=0 then raise ETuttoInUnoDataError.Create('TRegion.ItemIndice 零维区域不能返回坐标值');
     result:=nil;
     idx:=FItemsList.Count-1;
-    while idx>0 do begin
+    while idx>=0 do begin
         tmpRec:=PRegionItemRecord(FItemsList.Items[idx]);
         if tmpRec^.Item.Equals(Item) then begin
-            result:=tmpRec^.Indice;
+            result:=TRegionCoords.Create;
+            result.SetCoords(tmpRec^.Indice,FDimension);
             exit;
         end;
         dec(idx);
@@ -100,7 +104,7 @@ var tmpRec:PRegionItemRecord;
 begin
     result:=true;
     idx:=FItemsList.Count-1;
-    while idx>0 do begin
+    while idx>=0 do begin
         tmpRec:=PRegionItemRecord(FItemsList.Items[idx]);
         if tmpRec^.Item.Equals(Item) then exit;
         dec(idx);
@@ -108,16 +112,16 @@ begin
     result:=false;
 end;
 
-function TRegion.GetItem(Indice:array of TRegionIndex):TTuttoInUnoData;
+function TRegion.GetItem(Indice:TRegionCoords):TTuttoInUnoData;
 var tmpRec:PRegionItemRecord;
     idx:Integer;
 begin
     result:=nil;
-    if Length(Indice)<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.GetItem 坐标维度与区域维度不符');
+    if Indice.Dimension<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.GetItem 坐标维度与区域维度不符');
     idx:=FItemsList.Count-1;
-    while idx>0 do begin
+    while idx>=0 do begin
         tmpRec:=PRegionItemRecord(FItemsList.Items[idx]);
-        if CompareMem(@Indice[0],tmpRec^.Indice,FDimension*sizeof(TRegionIndex)) then begin
+        if CompareMem(Indice.FValue.datahead,tmpRec^.Indice,FDimension*sizeof(TRegionIndex)) then begin
             result:=tmpRec^.Item;
             exit;
         end;
@@ -125,12 +129,12 @@ begin
     end;
 end;
 
-function TRegion.AddItem(Item:TTuttoInUnoData;Indice:array of TRegionIndex):Boolean;
+function TRegion.AddItem(Item:TTuttoInUnoData;Indice:TRegionCoords):Boolean;
 var tmpRec:PRegionItemRecord;
     idx:Integer;
 begin
     result:=false;
-    if Length(Indice)<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.AddItem 坐标维度与区域维度不符');
+    if Indice.Dimension<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.AddItem 坐标维度与区域维度不符');
     for idx:=FDimension-1 downto 0 do begin
         if (FMinIndice+idx)^>(FMaxIndice+idx)^ then continue;
         if Indice[idx]>(FMaxIndice+idx)^ then exit;
@@ -161,16 +165,16 @@ begin
     end;
 end;
 
-function TRegion.DeleteItem(Indice:array of TRegionIndex):Boolean;
+function TRegion.DeleteItem(Indice:TRegionCoords):Boolean;
 var tmpRec:PRegionItemRecord;
     idx:Integer;
 begin
     result:=false;
     if FDimension=0 then raise ETuttoInUnoDataError.Create('TRegion.DeleteItem 零维区域无坐标值');
-    if Length(Indice)<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.DeleteItem 坐标维度与区域维度不符');
+    if Indice.Dimension<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.DeleteItem 坐标维度与区域维度不符');
     for idx:=FDimension-1 downto 0 do begin
         tmpRec:=PRegionItemRecord(FItemsList.Items[idx]);
-        if CompareMem(@Indice[0],tmpRec^.Indice,FDimension*sizeof(TRegionIndex)) then begin
+        if CompareMem(Indice.FValue.datahead,tmpRec^.Indice,FDimension*sizeof(TRegionIndex)) then begin
             FItemsList.Delete(idx);
             result:=true;
             exit;
@@ -178,15 +182,15 @@ begin
     end;
 end;
 
-constructor TRegion.Create(Dimension:Integer);
+constructor TRegion.Create(ADimension:Integer);
 begin
     inherited Create;
-    FDimension:=Dimension;
+    FDimension:=ADimension;
     FMaxIndice:=GetMem(FDimension*sizeof(TRegionIndex));
     FMinIndice:=GetMem(FDimension*sizeof(TRegionIndex));
     if FDimension>0 then begin
-        FillByte(FMaxIndice,FDimension,255);
-        FillByte(FMinIndice,FDimension,0);
+        FillByte(FMaxIndice^,FDimension*sizeof(TRegionIndex),255);
+        FillByte(FMinIndice^,FDimension*sizeof(TRegionIndex),0);
     end else begin
         FMaxIndice:=nil;
         FMinIndice:=nil;

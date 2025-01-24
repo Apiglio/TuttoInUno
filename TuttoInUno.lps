@@ -4,7 +4,7 @@
     <PathDelim Value="\"/>
     <Version Value="10"/>
     <BuildModes Active="Default"/>
-    <Units Count="23">
+    <Units Count="22">
       <Unit0>
         <Filename Value="TuttoInUno.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -30,7 +30,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="25"/>
-        <CursorPos X="5" Y="50"/>
+        <CursorPos Y="45"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit2>
@@ -38,8 +38,8 @@
         <Filename Value="class\region.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="16"/>
-        <CursorPos X="18" Y="34"/>
+        <TopLine Value="4"/>
+        <CursorPos X="30" Y="33"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit3>
@@ -47,7 +47,7 @@
         <Filename Value="class\player.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="4"/>
-        <TopLine Value="44"/>
+        <TopLine Value="43"/>
         <CursorPos Y="58"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
@@ -65,8 +65,8 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Apiglio_Useful"/>
         <EditorIndex Value="10"/>
-        <TopLine Value="43"/>
-        <CursorPos X="32" Y="49"/>
+        <TopLine Value="4766"/>
+        <CursorPos X="55" Y="4749"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit6>
@@ -74,8 +74,8 @@
         <Filename Value="..\AufScript\auf_ram_var.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="9"/>
-        <TopLine Value="133"/>
-        <CursorPos X="13" Y="151"/>
+        <TopLine Value="1626"/>
+        <CursorPos X="55" Y="1635"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit7>
@@ -100,8 +100,8 @@
         <Filename Value="..\AufScript\auftype\auf_type_base.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="6"/>
-        <TopLine Value="29"/>
-        <CursorPos X="48" Y="37"/>
+        <TopLine Value="291"/>
+        <CursorPos Y="309"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit10>
@@ -110,8 +110,8 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="8"/>
-        <TopLine Value="715"/>
-        <CursorPos X="40" Y="734"/>
+        <TopLine Value="349"/>
+        <CursorPos X="25" Y="369"/>
         <UsageCount Value="204"/>
         <Loaded Value="True"/>
       </Unit11>
@@ -139,8 +139,8 @@
         <Filename Value="class\basic.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="5"/>
-        <TopLine Value="175"/>
-        <CursorPos X="55" Y="175"/>
+        <TopLine Value="622"/>
+        <CursorPos X="19" Y="647"/>
         <UsageCount Value="200"/>
         <Loaded Value="True"/>
       </Unit14>
@@ -149,180 +149,172 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="681"/>
         <CursorPos X="3" Y="603"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit15>
       <Unit16>
-        <Filename Value="C:\lazarus\fpc\3.0.4\source\rtl\objpas\classes\stringl.inc"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="877"/>
-        <CursorPos X="16" Y="904"/>
-        <UsageCount Value="0"/>
-      </Unit16>
-      <Unit17>
-        <Filename Value="C:\lazarus\lcl\imagelistcache.pas"/>
-        <UnitName Value="ImageListCache"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="208"/>
-        <CursorPos X="25" Y="204"/>
-        <UsageCount Value="0"/>
-      </Unit17>
-      <Unit18>
         <Filename Value="C:\lazarus\fpc\3.0.4\source\rtl\inc\objpash.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="225"/>
         <CursorPos X="40" Y="243"/>
-        <UsageCount Value="7"/>
-      </Unit18>
-      <Unit19>
+        <UsageCount Value="6"/>
+      </Unit16>
+      <Unit17>
         <Filename Value="C:\lazarus\fpc\3.0.4\source\rtl\inc\objpas.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="930"/>
         <CursorPos X="11" Y="932"/>
-        <UsageCount Value="6"/>
-      </Unit19>
-      <Unit20>
+        <UsageCount Value="5"/>
+      </Unit17>
+      <Unit18>
         <Filename Value="C:\lazarus\lcl\dialogs.pp"/>
         <UnitName Value="Dialogs"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="683"/>
         <CursorPos X="10" Y="701"/>
-        <UsageCount Value="6"/>
-      </Unit20>
-      <Unit21>
+        <UsageCount Value="5"/>
+      </Unit18>
+      <Unit19>
         <Filename Value="C:\lazarus\fpc\3.0.4\source\packages\rtl-objpas\src\inc\strutils.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="25"/>
         <CursorPos X="17" Y="45"/>
-        <UsageCount Value="7"/>
-      </Unit21>
-      <Unit22>
+        <UsageCount Value="6"/>
+      </Unit19>
+      <Unit20>
         <Filename Value="C:\lazarus\lcl\include\inputdialog.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="142"/>
         <CursorPos X="32" Y="177"/>
+        <UsageCount Value="9"/>
+      </Unit20>
+      <Unit21>
+        <Filename Value="C:\lazarus\fpc\3.0.4\source\rtl\objpas\objpas.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="17"/>
+        <CursorPos X="8" Y="35"/>
         <UsageCount Value="10"/>
-      </Unit22>
+      </Unit21>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="30" HistoryIndex="28">
       <Position1>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="699" Column="51" TopLine="678"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="138" TopLine="118"/>
       </Position1>
       <Position2>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="280" Column="16" TopLine="255"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="137" TopLine="130"/>
       </Position2>
       <Position3>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="286" TopLine="262"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="138" TopLine="130"/>
       </Position3>
       <Position4>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="287" TopLine="262"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="139" TopLine="130"/>
       </Position4>
       <Position5>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="288" TopLine="262"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="138" TopLine="130"/>
       </Position5>
       <Position6>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="287" TopLine="262"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="139" TopLine="130"/>
       </Position6>
       <Position7>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="708" Column="43" TopLine="686"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="138" TopLine="130"/>
       </Position7>
       <Position8>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="375" Column="29" TopLine="353"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="143" TopLine="130"/>
       </Position8>
       <Position9>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="380" Column="28" TopLine="353"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="144" TopLine="130"/>
       </Position9>
       <Position10>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="14" Column="25"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="145" TopLine="130"/>
       </Position10>
       <Position11>
-        <Filename Value="class\basic.pas"/>
-        <Caret Line="73" Column="35" TopLine="34"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="146" TopLine="130"/>
       </Position11>
       <Position12>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="56" Column="8" TopLine="28"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="147" TopLine="130"/>
       </Position12>
       <Position13>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="63" Column="57" TopLine="45"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="146" TopLine="130"/>
       </Position13>
       <Position14>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="737" Column="41" TopLine="720"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="147" TopLine="130"/>
       </Position14>
       <Position15>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="741" Column="42" TopLine="723"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="146" TopLine="130"/>
       </Position15>
       <Position16>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="421" Column="24" TopLine="394"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="142" Column="20" TopLine="130"/>
       </Position16>
       <Position17>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="15" Column="18"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="140" Column="22" TopLine="154"/>
       </Position17>
       <Position18>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="63" Column="35" TopLine="44"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="87" TopLine="65"/>
       </Position18>
       <Position19>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="65" TopLine="44"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="88" TopLine="65"/>
       </Position19>
       <Position20>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="58" TopLine="44"/>
+        <Filename Value="class\region.pas"/>
+        <Caret Line="89" TopLine="65"/>
       </Position20>
       <Position21>
-        <Filename Value="class\item.pas"/>
-        <Caret Line="21" Column="23" TopLine="7"/>
+        <Filename Value="class\basic.pas"/>
+        <Caret Line="617" Column="30" TopLine="601"/>
       </Position21>
       <Position22>
-        <Filename Value="class\item.pas"/>
-        <Caret Line="50" Column="5" TopLine="25"/>
+        <Filename Value="class\basic.pas"/>
+        <Caret Line="129" Column="14" TopLine="576"/>
       </Position22>
       <Position23>
         <Filename Value="class\basic.pas"/>
-        <Caret Line="71" Column="21" TopLine="54"/>
+        <Caret Line="185" Column="25" TopLine="167"/>
       </Position23>
       <Position24>
-        <Filename Value="class\basic.pas"/>
-        <Caret Line="445" Column="22" TopLine="348"/>
+        <Filename Value="class\script_interface.pas"/>
+        <Caret Line="287" Column="34" TopLine="269"/>
       </Position24>
       <Position25>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="58" TopLine="44"/>
+        <Filename Value="class\basic.pas"/>
+        <Caret Line="185" Column="25" TopLine="617"/>
       </Position25>
       <Position26>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="59" TopLine="44"/>
+        <Filename Value="class\basic.pas"/>
+        <Caret Line="113" Column="24" TopLine="95"/>
       </Position26>
       <Position27>
-        <Filename Value="class\player.pas"/>
-        <Caret Line="58" TopLine="44"/>
+        <Filename Value="class\script_interface.pas"/>
+        <Caret Line="848" Column="53" TopLine="828"/>
       </Position27>
       <Position28>
         <Filename Value="class\script_interface.pas"/>
-        <Caret Line="735" Column="46" TopLine="715"/>
+        <Caret Line="868" Column="51" TopLine="859"/>
       </Position28>
       <Position29>
         <Filename Value="class\script_interface.pas"/>
-        <Caret Line="317" Column="40" TopLine="286"/>
+        <Caret Line="359" Column="18" TopLine="349"/>
       </Position29>
       <Position30>
-        <Filename Value="class\script_interface.pas"/>
-        <Caret Line="787" Column="40" TopLine="768"/>
+        <Filename Value="..\AufScript\auftype\auf_type_base.pas"/>
+        <Caret Line="309" TopLine="291"/>
       </Position30>
     </JumpHistory>
   </ProjectSession>

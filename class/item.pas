@@ -16,7 +16,7 @@ type
     public
         property Position:TTuttoInUnoData read GetPosition write SetPosition;
     public
-        function MoveTo(ARegion:TTuttoInUnoData;Indice:array of TRegionIndex):Boolean;
+        function MoveTo(ARegion:TTuttoInUnoData;Indice:TRegionCoords):Boolean;
     public
         constructor Create;
         class function AufTypeName:String; override;
@@ -38,8 +38,9 @@ begin
     FPosition:=AValue;
 end;
 
-function TItem.MoveTo(ARegion:TTuttoInUnoData;Indice:array of TRegionIndex):Boolean;
+function TItem.MoveTo(ARegion:TTuttoInUnoData;Indice:TRegionCoords):Boolean;
 begin
+    result:=false;
     if not (ARegion is TRegion) then raise ETuttoInUnoDataError.Create('TItem.MoveTo 不能将物品移动到区域之外的对象中');
     if FPosition<>nil then TRegion(FPosition).RemoveItem(Self);
     result:=TRegion(ARegion).AddItem(Self,Indice);

@@ -10,31 +10,36 @@ uses
 
 type
 
-    TTIUDirectDataType = (dtUnknown, dtInteger, dtFloat, dtString, dtObject, dtNil);
+    TTIUDirectDataType = (dtUnknown, dtInteger, dtFloat, dtString, dtObject, dtNil, dtIntArray);
     PTuttoInUnoDirectData = ^TTuttoInUnoDirectData;
     TTuttoInUnoDirectData = record
         datatype:TTIUDirectDataType;
         datasize:Integer;
         datahead:PByte;
+        unitsize:Integer; //只有在dt*Array时用到，表示一个元素的内存长度，datasize必须是其整数倍
     private
         procedure SetInteger(value:Integer);
         procedure SetDouble(value:Double);
         procedure SetString(value:String);
         procedure SetObject(value:TObject);
+        procedure SetIntArray(index,value:Integer);
         function GetInteger:Integer;
         function GetDouble:Double;
         function GetString:String;
         function GetObject:TObject;
+        function GetIntArray(index:Integer):Integer;
     public
         procedure Initialize;
         procedure Finalize;
         procedure Assign(source:TTuttoInUnoDirectData);
     public
         function ToString:string;
+        procedure CreateIntArray(len:Integer);
         property AsInteger:Integer read GetInteger write SetInteger;
         property AsDouble:Double read GetDouble write SetDouble;
         property AsString:String read GetString write SetString;
         property AsObject:TObject read GetObject write SetObject;
+        property AsIntArray[index:Integer]:Integer read GetIntArray write SetIntArray;
     end;
 
     ETuttoInUnoDataError = Exception;
@@ -99,12 +104,31 @@ type
     TRegionIndex = Integer;
     PRegionIndex = ^TRegionIndex;
 
+    TRegionCoords = class(TData)
+    protected
+        function GetDimension:Integer;
+        function GetCoord(index:integer):TRegionIndex;
+    public
+        procedure SetCoords(pindex:PRegionIndex;dimens:Integer);
+        function GetCoords:PRegionIndex;
+        function DistanceTo(Coords:TRegionCoords):Double;
+        constructor Create;
+        destructor Destroy; override;
+        class function AufTypeName: String; override;
+        property Dimension:Integer read GetDimension;
+        property Coord[index:Integer]:TRegionIndex read GetCoord; default;
+    end;
+
+
     function NewDirectNil:PTuttoInUnoDirectData;
     function NewDirectInteger(value:Integer):PTuttoInUnoDirectData;
     function NewDirectFloat(value:Double):PTuttoInUnoDirectData;
     function NewDirectString(value:String):PTuttoInUnoDirectData;
     function NewDirectObject(value:TObject):PTuttoInUnoDirectData;
+    function NewDirectIntArray(arr:array of integer):PTuttoInUnoDirectData;
     procedure ReleaseDirectData(data:PTuttoInUnoDirectData);
+    function NewRegionCoords:TRegionCoords;
+
 
 implementation
 
@@ -143,10 +167,26 @@ begin
     result^.AsObject:=value;
 end;
 
+function NewDirectIntArray(arr:array of integer):PTuttoInUnoDirectData;
+var len,idx:Integer;
+begin
+    len:=Length(arr);
+    result:=PTuttoInUnoDirectData(GetMem(sizeof(TTuttoInUnoDirectData)));
+    result^.Initialize;
+    result^.unitsize:=sizeof(Integer);
+    for idx:=len-1 downto 0 do (PInteger(result^.datahead)+idx)^:=arr[idx];
+end;
+
 procedure ReleaseDirectData(data:PTuttoInUnoDirectData);
 begin
     data^.Finalize;
     FreeMem(data,sizeof(TTuttoInUnoDirectData));
+end;
+
+function NewRegionCoords:TRegionCoords;
+begin
+    result:=TRegionCoords.Create;
+    result.SetCoords(nil,0);
 end;
 
 { TTuttoInUnoDirectData }
@@ -186,6 +226,14 @@ begin
     if value=nil then datatype:=dtNil else datatype:=dtObject;
 end;
 
+procedure TTuttoInUnoDirectData.SetIntArray(index,value:Integer);
+begin
+    if datahead=nil then raise Exception.Create('TTuttoInUnoDirectData is not initialized');
+    if datatype<>dtIntArray then raise Exception.Create('TTuttoInUnoDirectData is not an int array');
+    if (index+1)*sizeof(Integer)>datasize then raise Exception.Create('TTuttoInUnoDirectData array index overflow');
+    (PInteger(datahead)+index)^:=value;
+end;
+
 function TTuttoInUnoDirectData.GetInteger:Integer;
 begin
     if datahead=nil then raise Exception.Create('TTuttoInUnoDirectData is not initialized');
@@ -217,11 +265,20 @@ begin
     end;
 end;
 
+function TTuttoInUnoDirectData.GetIntArray(index:Integer):Integer;
+begin
+    if datahead=nil then raise Exception.Create('TTuttoInUnoDirectData is not initialized');
+    if datatype<>dtIntArray then raise Exception.Create('TTuttoInUnoDirectData is not an int array');
+    if (index+1)*sizeof(Integer)>datasize then raise Exception.Create('TTuttoInUnoDirectData array index overflow');
+    result:=(PInteger(datahead)+index)^;
+end;
+
 procedure TTuttoInUnoDirectData.Initialize;
 begin
     datatype:=dtUnknown;
     datasize:=0;
     datahead:=nil;
+    unitsize:=1;
 end;
 
 procedure TTuttoInUnoDirectData.Finalize;
@@ -230,30 +287,21 @@ begin
     datatype:=dtUnknown;
     datasize:=0;
     datahead:=nil;
+    unitsize:=1;
 end;
 
 procedure TTuttoInUnoDirectData.Assign(source:TTuttoInUnoDirectData);
 begin
-    {
     Self.Initialize;
     Self.datasize:=source.datasize;
     Self.datatype:=source.datatype;
     Self.datahead:=GetMem(source.datasize);
-    move(pbyte(source.datahead), pbyte(Self.datahead), Self.datasize);
-    }
-    //上面这个assign问题在哪啊？？？
-    case source.datatype of
-        dtObject:  Self.AsObject  := source.AsObject;
-        dtNil:     Self.AsObject  := source.AsObject;
-        dtInteger: Self.AsInteger := source.AsInteger;
-        dtFloat:   Self.AsDouble  := source.AsDouble;
-        dtString:  Self.AsString  := source.AsString;
-        else raise ETuttoInUnoDataError.Create('TTuttoInUnoDirectData.Assign unexpected datatype');
-    end;
+    move(pbyte(source.datahead)^, pbyte(Self.datahead)^, Self.datasize);
 end;
 
 function TTuttoInUnoDirectData.ToString:string;
 var obj:TObject;
+    idx,max_idx:integer;
 begin
     case Self.datatype of
         dtObject:
@@ -268,8 +316,28 @@ begin
         dtInteger: result:=IntToStr(Self.AsInteger);
         dtFloat:   result:=FloatToStr(Self.AsDouble);
         dtString:  result:=Format('"%s"',[Self.AsString]);
+        dtIntArray:
+        begin
+            result:='[';
+            max_idx:=datasize div unitsize - 1;
+            for idx:=0 to max_idx do begin
+               result:=result+IntToStr((PInteger(datahead)+idx)^);
+               if idx<>max_idx then result:=result+',';
+            end;
+            result:=result+']';
+        end
         else raise ETuttoInUnoDataError.Create('TTuttoInUnoDirectData.ToString unexpected datatype');
     end;
+end;
+
+procedure TTuttoInUnoDirectData.CreateIntArray(len:Integer);
+begin
+    if datahead<>nil then FreeMem(datahead, datasize);
+    unitsize:=sizeof(Integer);
+    datasize:=len*unitsize;
+    datahead:=GetMem(datasize);
+    datatype:=dtIntArray;
+    FillByte(datahead^,datasize,0);
 end;
 
 { TTuttoInUnoData }
@@ -541,6 +609,63 @@ class function TData.AufTypeName:String;
 begin
     result:='tiu.data';
 end;
+
+
+{ TRegionCoords }
+
+function TRegionCoords.GetDimension:Integer;
+begin
+    result:=FValue.datasize div FValue.unitsize;
+end;
+
+function TRegionCoords.GetCoord(index:integer):TRegionIndex;
+begin
+    if index >= (FValue.datasize div FValue.unitsize) then raise ETuttoInUnoDataError.Create('TRegionCoords.GetCoord 维度超界');
+    result:=(PInteger(FValue.datahead)+index)^;
+end;
+
+procedure TRegionCoords.SetCoords(pindex:PRegionIndex;dimens:Integer);
+begin
+    FValue.CreateIntArray(dimens);
+    //这里有一个潜在的风险，如果RegionIndex被改成Integer以外的类型，有可能出现内存错误
+    move(pindex^,FValue.datahead^,dimens*sizeof(Integer));
+end;
+
+function TRegionCoords.GetCoords:PRegionIndex;
+begin
+  result:=PInteger(FValue.datahead);
+end;
+
+function TRegionCoords.DistanceTo(Coords:TRegionCoords):Double;
+var idx,len,v1,v2:integer;
+begin
+  result:=0;
+  if Coords.Dimension<>Self.Dimension then  raise ETuttoInUnoDataError.Create('TRegionCoords.DistanceTo 维数不同不能计算距离');
+  for idx:= Dimension-1 downto 0 do begin
+      v1:=Self[idx];
+      v2:=Coords[idx];
+      result:=result+v1*v1+v2*v2;
+  end;
+  result:=sqrt(result);
+end;
+
+constructor TRegionCoords.Create;
+begin
+    inherited Create;
+    FValue.Initialize;
+end;
+
+destructor TRegionCoords.Destroy;
+begin
+    FValue.Finalize;
+    inherited Destroy;
+end;
+
+class function TRegionCoords.AufTypeName: String;
+begin
+  result:='tiu.coords';
+end;
+
 
 end.
 

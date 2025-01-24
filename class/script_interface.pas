@@ -274,25 +274,22 @@ end;
 procedure Item_moveTo(Sender:TObject); // item . moveTo region coords...
 var AufScpt:TAufScript;
     AAuf:TAuf;
-    item,region:TObject;
-    paramNo:integer;
-    coords:array of TRegionIndex;
+    item,region,coords:TObject;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
     if not AAuf.CheckArgs(3) then exit;
     if not AAuf.TryArgToObject(1,TItem,item) then exit;
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
-    SetLength(coords,AAuf.ArgsCount-3);
-    try
-        for paramNo:=3 to AAuf.ArgsCount-1 do begin
-            if not AAuf.TryArgToLong(paramNo,coords[paramNo-3]) then exit;
-        end;
-        TItem(item).MoveTo(region as TTuttoInUnoData,coords);
-    finally
-        SetLength(coords,0);
+    if AAuf.ArgsCount>3 then begin
+        if not AAuf.TryArgToObject(3,TRegionCoords,coords) then exit;
+    end else begin
+        coords:=NewRegionCoords();
     end;
-    AufScpt.writeln(Format('将物品%s移动到%s',[TItem(item).Value.AsString, TRegion(region).Value.AsString]));
+    if TItem(item).MoveTo(region as TTuttoInUnoData, coords as TRegionCoords) then
+        AufScpt.writeln(Format('将物品%s移动到%s',[TItem(item).Value.AsString, TRegion(region).Value.AsString]))
+    else
+        AufScpt.writeln(Format('未能将物品%s移动到%s！',[TItem(item).Value.AsString, TRegion(region).Value.AsString]));
 end;
 
 procedure Item_jumpIfIn(Sender:TObject); // item . in? region :addr || item . in? region :addr
@@ -317,6 +314,62 @@ begin
         else AufScpt.jump_addr(addr);
     end;
 end;
+
+procedure RegionCoords_new(Sender:TObject); // coords = newCoords [x, y, z, ... ]
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    paramNo,dimens,itmp:integer;
+    coords:TRegionCoords;
+    pindex:PRegionIndex;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(2) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+
+    dimens:=AAuf.ArgsCount-2;
+    coords:=TRegionCoords.Create;
+    if dimens>0 then begin
+        pindex:=GetMem(dimens*sizeof(TRegionIndex));
+        try
+          try
+            for paramNo:=2 to AAuf.ArgsCount-1 do begin
+                if not AAuf.TryArgToLong(paramNo,itmp) then exit;
+                (pindex+paramNo-2)^:=itmp;
+            end;
+            coords.SetCoords(pindex,dimens);
+          except
+            coords.Free;
+            obj_to_arv(NewRegionCoords(),arv);
+          end;
+        finally
+            if dimens>0 then FreeMem(pindex,dimens*sizeof(TRegionIndex));
+        end;
+    end else begin
+        coords.SetCoords(nil,0);
+    end;
+    obj_to_arv(coords,arv);
+end;
+
+procedure RegionCoords_distance(Sender:TObject); // dist = distance c1,c2
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    c1,c2:TObject;
+    data:TData;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(4) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TRegionCoords,c1) then exit;
+    if not AAuf.TryArgToObject(3,TRegionCoords,c2) then exit;
+    data:=TData.Create;
+    data.FValue.AsDouble:=TRegionCoords(c1).DistanceTo(c2 as TRegionCoords);
+    obj_to_arv(data,arv);
+end;
+
 
 procedure newRegion(Sender:TObject); // region = newRegion name dimension
 var AufScpt:TAufScript;
@@ -358,28 +411,76 @@ begin
     AufScpt.writeln(Format('区域“%s”内的物品数量为：%d',[TRegion(region).Value.AsString, data.Value.AsInteger]));
 end;
 
-procedure Region_itemAt(Sender:TObject); // item = itemAt region coords...
+procedure Region_itemAt(Sender:TObject); // item = itemAt region coords
 var AufScpt:TAufScript;
     AAuf:TAuf;
     arv:TAufRamVar;
-    item,region:TObject;
-    paramNo:integer;
-    coords:array of TRegionIndex;
+    region,coords,item:TObject;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
     if not AAuf.CheckArgs(3) then exit;
     if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
-    SetLength(coords,AAuf.ArgsCount-3);
-    try
-        for paramNo:=3 to AAuf.ArgsCount-1 do begin
-            if not AAuf.TryArgToLong(paramNo,coords[paramNo-3]) then exit;
-        end;
-        item:=TRegion(region).GetItem(coords);
-        obj_to_arv(item,arv);
-    finally
-        SetLength(coords,0);
+    if not AAuf.TryArgToObject(3,TRegionCoords,coords) then exit;
+    item:=TRegion(region).GetItem(TRegionCoords(coords));
+    obj_to_arv(item,arv);
+end;
+
+procedure Region_itemCoords(Sender:TObject); // coords = itemCoords region item
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    item,region:TObject;
+    coords:TRegionCoords;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(4) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TRegion,region) then exit;
+    if not AAuf.TryArgToObject(3,TItem,item) then exit;
+    coords:=TRegion(region).ItemIndice(TItem(item));
+    obj_to_arv(coords,arv);
+end;
+
+procedure Region_setMax(Sender:TObject); // region . setMax coords...
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    region:TObject;
+    paramNo,ltmp:integer;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TRegion,region) then exit;
+    if AAuf.ArgsCount-2<>TRegion(region).Dimension then begin
+        AufScpt.send_error('坐标数量与区域维度数不符，代码未执行');
+        exit;
+    end;
+    for paramNo:=2 to AAuf.ArgsCount-1 do begin
+        if not AAuf.TryArgToLong(paramNo,ltmp) then exit;
+        TRegion(region).MaxIndex[paramNo-2]:=ltmp;
+    end;
+end;
+
+procedure Region_setMin(Sender:TObject); // region . setMin coords...
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    region:TObject;
+    paramNo,ltmp:integer;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TRegion,region) then exit;
+    if AAuf.ArgsCount-2<>TRegion(region).Dimension then begin
+        AufScpt.send_error('坐标数量与区域维度数不符，代码未执行');
+        exit;
+    end;
+    for paramNo:=2 to AAuf.ArgsCount-1 do begin
+        if not AAuf.TryArgToLong(paramNo,ltmp) then exit;
+        TRegion(region).MinIndex[paramNo-2]:=ltmp;
     end;
 end;
 
@@ -761,9 +862,15 @@ begin
         add_func('tiu.item.in?c',@Item_jumpIfIn,'','判断物品是否在区域内，在则跳转，并压栈');
         add_func('tiu.item.nin?c',@Item_jumpIfIn,'','判断物品是否在区域内，不在则跳转，并压栈');
 
+        add_func('newcoords',@RegionCoords_new,'[x, y, z... ]','创建新坐标',TRegionCoords);
+        add_func('distance',@RegionCoords_distance,'c1,c2','创建新坐标',TData);
+
         add_func('newregion',@newRegion,'维度','创建新区域',TRegion);
         add_func('itemcount',@Region_itemCount,'','返回区域内物品数量',TData);
         add_func('itemat',@Region_itemAt,'','返回区域内指定坐标的物品',TItem);
+        add_func('itemcoords',@Region_itemCoords,'','返回区域内指定物品的坐标',TRegionCoords);
+        add_func('tiu.region.setmax',@Region_setMax,'','设置坐标最大值');
+        add_func('tiu.region.setmin',@Region_setMin,'','设置坐标最小值');
 
 
         add_func('askfornumber',@askForNumber,'玩家,最小值,最大值','询问玩家数量',TData);
@@ -807,6 +914,8 @@ begin
         add_func('nin?',@func_nil,'','仅用于高亮方案占位');
         add_func('in?c',@func_nil,'','仅用于高亮方案占位');
         add_func('nin?c',@func_nil,'','仅用于高亮方案占位');
+        add_func('setmax',@func_nil,'','仅用于高亮方案占位');
+        add_func('setmin',@func_nil,'','仅用于高亮方案占位');
 
 
     end;
