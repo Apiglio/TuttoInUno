@@ -1,0 +1,122 @@
+//羊狼棋
+//
+//5x5方格棋盘
+//狼方：3个棋子
+//羊方：15个棋子
+//两个玩家交替行动，双方均可以移动一枚棋子到相邻的空位上
+//狼方也可以跳过一个空位“吃掉”羊方的棋子
+//狼方胜利条件：羊方棋盘上无棋子
+//羊方胜利条件：狼方无法移动棋子
+
+TuttoFree
+
+//定义游戏内容原型
+
+piece = newItemProto
+piece . addTag "棋子"
+sheep = newItem piece "羊"
+sheep . addTag "羊"
+sheep . setAttribute "玩家" "羊"
+wolf  = newItem piece "狼"
+wolf  . addTag "狼"
+wolf  . setAttribute "玩家" "狼"
+proto = newPlayerProto
+proto . addTag "玩家"
+
+//生成玩家循环
+p_sheep = newPlayer proto "羊方"
+p_wolf  = newPlayer proto "狼方"
+p_sheep . setAttribute "棋子", "羊"
+p_wolf  . setAttribute "棋子", "狼"
+players = newPlayerLoop p_wolf p_sheep
+
+//生成游戏区域
+board = newRegion "棋盘" 2
+board . addTag "棋盘"
+board . setMax 5,5
+board . setMin 1,1
+grave = newRegion "墓地"
+grave . addTag "墓地"
+
+//生成棋子
+var int a 1
+var int b 1
+mov @a, 0
+row:
+	add @a, 1
+	mov @b, 0
+	col:
+		add @b, 1
+		tmp = newItem sheep ""
+		ctmp = newCoords @a,@b
+		tmp . moveTo board ctmp
+	loop :col 4
+loop :row 2
+unvar a
+unvar b
+
+tmp = newItem wolf ""
+ctmp = newCoords 5,1
+tmp . moveTo board ctmp
+tmp = newItem wolf ""
+ctmp = newCoords 5,3
+tmp . moveTo board ctmp
+tmp = newItem wolf ""
+ctmp = newCoords 5,5
+tmp . moveTo board ctmp
+
+var int valid_operation
+
+//回合
+round:
+	p = currentPlayer players
+	piece_tag = getAttribute p "棋子"
+	
+	need_to_move = askForItem p piece_tag
+	ori_coords = itemcoords board need_to_move
+	new_coords = askForCoords p board
+	det_coords = copyCoords new_coords
+	det_coords . sub ori_coords
+	dist = length det_coords
+	
+	mov @valid_operation, 0
+	dist . cjec 1 :moving
+	dist . cjec 2 :eating
+	cje @valid_operation, 0, :ending
+
+	players . nextplayer
+jmp :round
+
+//移动棋子
+moving:
+	tmp = itemAt board new_coords
+	tmp . nvoid? :quit_moving
+	need_to_move . nin? board :quit_moving
+	need_to_move . moveTo board new_coords
+	mov @valid_operation, 1
+quit_moving:
+ret
+
+//吃子
+eating:
+	piece_tag . ncje "狼", :quit_eating
+	tmp = itemAt board new_coords
+	tmp . void? :quit_eating
+	side = getAttribute tmp "玩家"
+	side . cje piece_tag :quit_eating
+	tmp . moveTo grave
+	need_to_move . moveTo board new_coords
+	mov @valid_operation, 1
+quit_eating:
+ret
+
+//游戏结束
+ending:
+	players . prevPlayer
+	p = currentPlayer players
+	p . win
+	unvar valid_operation
+end
+
+
+

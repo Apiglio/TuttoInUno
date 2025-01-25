@@ -29,6 +29,7 @@ type
         procedure SetMaxIndex(Index:Integer;AValue:TRegionIndex);
         function GetItemCount:Integer;
     public
+        function IndiceValid(Indice:TRegionCoords):Boolean;
         function ItemIndice(Item:TTuttoInUnoData):TRegionCoords;
         function HasItem(Item:TTuttoInUnoData):Boolean;
         function GetItem(Indice:TRegionCoords):TTuttoInUnoData;
@@ -80,12 +81,24 @@ begin
     result:=FItemsList.Count;
 end;
 
+function TRegion.IndiceValid(Indice:TRegionCoords):Boolean;
+var idx:integer;
+begin
+    result:=false;
+    for idx:=FDimension-1 downto 0 do begin
+        if (FMinIndice+idx)^>(FMaxIndice+idx)^ then continue;
+        if Indice[idx]>(FMaxIndice+idx)^ then exit;
+        if Indice[idx]<(FMinIndice+idx)^ then exit;
+    end;
+    result:=true;
+end;
+
 function TRegion.ItemIndice(Item:TTuttoInUnoData):TRegionCoords;
 var tmpRec:PRegionItemRecord;
     idx:Integer;
 begin
-    if FDimension=0 then raise ETuttoInUnoDataError.Create('TRegion.ItemIndice 零维区域不能返回坐标值');
     result:=nil;
+    if FDimension=0 then exit;//TRegion.ItemIndice 零维区域不能返回坐标值'
     idx:=FItemsList.Count-1;
     while idx>=0 do begin
         tmpRec:=PRegionItemRecord(FItemsList.Items[idx]);
@@ -135,11 +148,7 @@ var tmpRec:PRegionItemRecord;
 begin
     result:=false;
     if Indice.Dimension<>FDimension then raise ETuttoInUnoDataError.Create('TRegion.AddItem 坐标维度与区域维度不符');
-    for idx:=FDimension-1 downto 0 do begin
-        if (FMinIndice+idx)^>(FMaxIndice+idx)^ then continue;
-        if Indice[idx]>(FMaxIndice+idx)^ then exit;
-        if Indice[idx]<(FMinIndice+idx)^ then exit;
-    end;
+    if not Self.IndiceValid(Indice) then raise ETuttoInUnoDataError.Create('TRegion.AddItem 不在区域有效坐标范围内');;
     tmpRec:=GetMem(sizeof(TRegionItemRecord));
     tmpRec^.Item:=Item;
     tmpRec^.Indice:=GetMem(FDimension*sizeof(TRegionIndex));

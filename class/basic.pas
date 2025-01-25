@@ -10,7 +10,7 @@ uses
 
 type
 
-    TTIUDirectDataType = (dtUnknown, dtInteger, dtFloat, dtString, dtObject, dtNil, dtIntArray);
+    TTIUDirectDataType = (dtNil, dtInteger, dtFloat, dtString, dtObject, dtIntArray);
     PTuttoInUnoDirectData = ^TTuttoInUnoDirectData;
     TTuttoInUnoDirectData = record
         datatype:TTIUDirectDataType;
@@ -108,15 +108,19 @@ type
     protected
         function GetDimension:Integer;
         function GetCoord(index:integer):TRegionIndex;
+        procedure SetCoord(index:integer;avalue:TRegionIndex);
     public
         procedure SetCoords(pindex:PRegionIndex;dimens:Integer);
         function GetCoords:PRegionIndex;
         function DistanceTo(Coords:TRegionCoords):Double;
+        function Length:Double;
+        procedure Add(Coords:TRegionCoords);
+        procedure Sub(Coords:TRegionCoords);
         constructor Create;
         destructor Destroy; override;
         class function AufTypeName: String; override;
         property Dimension:Integer read GetDimension;
-        property Coord[index:Integer]:TRegionIndex read GetCoord; default;
+        property Coord[index:Integer]:TRegionIndex read GetCoord write SetCoord; default;
     end;
 
 
@@ -127,7 +131,10 @@ type
     function NewDirectObject(value:TObject):PTuttoInUnoDirectData;
     function NewDirectIntArray(arr:array of integer):PTuttoInUnoDirectData;
     procedure ReleaseDirectData(data:PTuttoInUnoDirectData);
-    function NewRegionCoords:TRegionCoords;
+
+    //创建TDATA的特殊值
+    function ZeroRegionCoords:TRegionCoords;
+    function DataNil:TData;
 
 
 implementation
@@ -183,10 +190,16 @@ begin
     FreeMem(data,sizeof(TTuttoInUnoDirectData));
 end;
 
-function NewRegionCoords:TRegionCoords;
+function ZeroRegionCoords:TRegionCoords;
 begin
     result:=TRegionCoords.Create;
     result.SetCoords(nil,0);
+end;
+
+function DataNil:TData;
+begin
+  result:=TData.Create;
+  result.FValue.datatype:=dtNil;
 end;
 
 { TTuttoInUnoDirectData }
@@ -275,7 +288,7 @@ end;
 
 procedure TTuttoInUnoDirectData.Initialize;
 begin
-    datatype:=dtUnknown;
+    datatype:=dtNil;
     datasize:=0;
     datahead:=nil;
     unitsize:=1;
@@ -284,7 +297,7 @@ end;
 procedure TTuttoInUnoDirectData.Finalize;
 begin
     if datasize<>0 then Freemem(datahead, datasize);
-    datatype:=dtUnknown;
+    datatype:=dtNil;
     datasize:=0;
     datahead:=nil;
     unitsize:=1;
@@ -296,6 +309,7 @@ begin
     Self.datasize:=source.datasize;
     Self.datatype:=source.datatype;
     Self.datahead:=GetMem(source.datasize);
+    Self.unitsize:=source.unitsize;
     move(pbyte(source.datahead)^, pbyte(Self.datahead)^, Self.datasize);
 end;
 
@@ -462,7 +476,7 @@ function TTuttoInUnoData.ToString:ansistring;
 var idx:integer;
 begin
     result:=Format('%s{ ',[Self.ClassName]);
-    if FValue.datatype<>dtUnknown then result:=result+Format('value: %s, ',[FValue.ToString]);
+    result:=result+Format('value: %s, ',[FValue.ToString]);
     result:=result+Format('tags:[%s], ',[FTags.CommaText]);
     result:=result+'attrs: {';
     for idx:= FAttributeMap.Count-1 downto 0 do begin
@@ -531,6 +545,7 @@ begin
     FAttributeMap.Free;
     FTags.Free;
     FValue.Finalize;
+    inherited Destroy;
 end;
 
 class function TTuttoInUnoData.AufTypeName:String;
@@ -624,6 +639,12 @@ begin
     result:=(PInteger(FValue.datahead)+index)^;
 end;
 
+procedure TRegionCoords.SetCoord(index:integer;avalue:TRegionIndex);
+begin
+    if index >= (FValue.datasize div FValue.unitsize) then raise ETuttoInUnoDataError.Create('TRegionCoords.SetCoord 维度超界');
+    (PInteger(FValue.datahead)+index)^:=avalue;
+end;
+
 procedure TRegionCoords.SetCoords(pindex:PRegionIndex;dimens:Integer);
 begin
     FValue.CreateIntArray(dimens);
@@ -637,16 +658,45 @@ begin
 end;
 
 function TRegionCoords.DistanceTo(Coords:TRegionCoords):Double;
-var idx,len,v1,v2:integer;
+var idx,v1,v2:integer;
 begin
   result:=0;
-  if Coords.Dimension<>Self.Dimension then  raise ETuttoInUnoDataError.Create('TRegionCoords.DistanceTo 维数不同不能计算距离');
+  if Coords.Dimension<>Self.Dimension then raise ETuttoInUnoDataError.Create('TRegionCoords.DistanceTo 维数不同不能计算距离');
   for idx:= Dimension-1 downto 0 do begin
       v1:=Self[idx];
       v2:=Coords[idx];
       result:=result+v1*v1+v2*v2;
   end;
   result:=sqrt(result);
+end;
+
+function TRegionCoords.Length:Double;
+var idx,v1:integer;
+begin
+  result:=0;
+  for idx:= Dimension-1 downto 0 do begin
+      v1:=Self[idx];
+      result:=result+v1*v1;
+  end;
+  result:=sqrt(result);
+end;
+
+procedure TRegionCoords.Add(Coords:TRegionCoords);
+var idx:integer;
+begin
+  if Coords.Dimension<>Self.Dimension then raise ETuttoInUnoDataError.Create('TRegionCoords.Add 维数不同不能计算距离');
+  for idx:= Dimension-1 downto 0 do begin
+      Self[idx]:=Self[idx]+Coords[idx];
+  end;
+end;
+
+procedure TRegionCoords.Sub(Coords:TRegionCoords);
+var idx:integer;
+begin
+  if Coords.Dimension<>Self.Dimension then raise ETuttoInUnoDataError.Create('TRegionCoords.Add 维数不同不能计算距离');
+  for idx:= Dimension-1 downto 0 do begin
+      Self[idx]:=Self[idx]-Coords[idx];
+  end;
 end;
 
 constructor TRegionCoords.Create;

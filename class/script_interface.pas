@@ -7,6 +7,10 @@ interface
 uses
     Classes, SysUtils, Apiglio_Useful, auf_ram_var;
 
+type
+  ETuttoInUnoSyntaxError = class(EAufScriptSyntaxError)
+  end;
+
 procedure GenerateAufScriptFunction(AufScpt:TAufScript);
 
 implementation
@@ -96,14 +100,17 @@ var AufScpt:TAufScript;
     AAuf:TAuf;
     key:string;
     value,data:TObject;
+    arv:TAufRamVar;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
     if not AAuf.CheckArgs(4) then exit;
-    if not AAuf.TryArgToObject(1,TTuttoInUnoData,value) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
     if not AAuf.TryArgToObject(2,TTuttoInUnoData,data) then exit;
     if not AAuf.TryArgToString(3,key) then exit;
+    value:=TData.Create;
     TData(value).FValue.Assign(TTuttoInUnoData(data).Data[Key]);
+    obj_to_arv(value,arv);
 end;
 
 procedure inspectAttribute(Sender:TObject); // inspectAttribute data
@@ -116,6 +123,31 @@ begin
     if not AAuf.CheckArgs(2) then exit;
     if not AAuf.TryArgToObject(1,TTuttoInUnoData,data) then exit;
     AufScpt.writeln(TTuttoInUnoData(data).ToString);
+end;
+
+procedure JumpIfNil(Sender:TObject); // data . nil? :addr
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    data:TObject;
+    addr:pRam;
+    method_name:string;
+    res,is_not,is_call:boolean;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TTuttoInUnoData,data) then exit;
+    if not AAuf.TryArgToAddr(2,addr) then exit;
+    method_name:=AAuf.args[0];
+    compare_jump_mode(method_name,is_not,is_call);
+    res:=false;
+    res:=res or (data=nil);
+    res:=res or (TTuttoInUnoData(data).Value.datatype=dtNil);
+    res:=res or ((TTuttoInUnoData(data).Value.datatype=dtObject) and (TTuttoInUnoData(data).Value.AsObject=nil));
+    if res xor is_not then begin
+        if is_call then AAuf.Script.push_addr(AufScpt.ScriptLines,AufScpt.ScriptName,addr)
+        else AufScpt.jump_addr(addr);
+    end;
 end;
 
 procedure newPlayerPrototype(Sender:TObject); // player_proto = newPlayerPrototype
@@ -163,7 +195,7 @@ begin
     if not AAuf.CheckArgs(2) then exit;
     if not AAuf.TryArgToObject(1,TPlayer,player) then exit;
     TPlayer(player).Win;
-    AufScpt.writeln(Format('玩家“%s”获得胜利',[TPlayer(player).FValue.AsString]));
+    AufScpt.writeln(Format('玩家“%s”获得胜利',[TPlayer(player).Value.AsString]));
 end;
 
 procedure PlayerLoop_new(Sender:TObject); // player_loop = newPlayerLoop [player, ...]
@@ -203,7 +235,7 @@ begin
     if not AAuf.TryArgToObject(1,TPlayerLoop,player_loop) then exit;
     TPlayerLoop(player_loop).SetRandomCursor;
     player:=TPlayerLoop(player_loop).CurrentPlayer;
-    AufScpt.writeln(Format('随机选中：%s',[player.FValue.AsString]));
+    AufScpt.writeln(Format('随机选中：%s',[player.Value.AsString]));
 end;
 
 procedure PlayerLoop_nextPlayer(Sender:TObject); // player_loop . nextPlayer
@@ -218,7 +250,22 @@ begin
     if not AAuf.TryArgToObject(1,TPlayerLoop,player_loop) then exit;
     TPlayerLoop(player_loop).NextPlayer;
     player:=TPlayerLoop(player_loop).CurrentPlayer;
-    AufScpt.writeln(Format('下一个玩家：%s',[player.FValue.AsString]));
+    AufScpt.writeln(Format('下一个玩家：%s',[player.Value.AsString]));
+end;
+
+procedure PlayerLoop_prevPlayer(Sender:TObject); // player_loop . prevPlayer
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    player_loop:TObject;
+    player:TPlayer;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(2) then exit;
+    if not AAuf.TryArgToObject(1,TPlayerLoop,player_loop) then exit;
+    TPlayerLoop(player_loop).PrevPlayer;
+    player:=TPlayerLoop(player_loop).CurrentPlayer;
+    AufScpt.writeln(Format('上一个玩家：%s',[player.Value.AsString]));
 end;
 
 procedure PlayerLoop_currentPlayer(Sender:TObject); // player = currentplayer playerloop
@@ -233,7 +280,7 @@ begin
     if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
     if not AAuf.TryArgToObject(2,TPlayerLoop,player_loop) then exit;
     player:=TPlayerLoop(player_loop).CurrentPlayer;
-    obj_to_arv(player,arv);
+    if player<>nil then obj_to_arv(player,arv) else obj_to_arv(DataNil(),arv);
 end;
 
 procedure newItemPrototype(Sender:TObject); // item_proto = newItemPrototype
@@ -284,15 +331,15 @@ begin
     if AAuf.ArgsCount>3 then begin
         if not AAuf.TryArgToObject(3,TRegionCoords,coords) then exit;
     end else begin
-        coords:=NewRegionCoords();
+        coords:=ZeroRegionCoords();
     end;
     if TItem(item).MoveTo(region as TTuttoInUnoData, coords as TRegionCoords) then
-        AufScpt.writeln(Format('将物品%s移动到%s',[TItem(item).Value.AsString, TRegion(region).Value.AsString]))
+        AufScpt.writeln(Format('将物品%s移动到%s (位置=%s)',[TItem(item).Value.AsString, TRegion(region).Value.AsString, TRegionCoords(coords).Value.ToString]))
     else
         AufScpt.writeln(Format('未能将物品%s移动到%s！',[TItem(item).Value.AsString, TRegion(region).Value.AsString]));
 end;
 
-procedure Item_jumpIfIn(Sender:TObject); // item . in? region :addr || item . in? region :addr
+procedure Item_jumpIfIn(Sender:TObject); // item . in? region :addr
 var AufScpt:TAufScript;
     AAuf:TAuf;
     item,region:TObject;
@@ -302,7 +349,7 @@ var AufScpt:TAufScript;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
-    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.CheckArgs(4) then exit;
     if not AAuf.TryArgToObject(1,TItem,item) then exit;
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
     if not AAuf.TryArgToAddr(3,addr) then exit;
@@ -341,7 +388,7 @@ begin
             coords.SetCoords(pindex,dimens);
           except
             coords.Free;
-            obj_to_arv(NewRegionCoords(),arv);
+            obj_to_arv(ZeroRegionCoords(),arv);
           end;
         finally
             if dimens>0 then FreeMem(pindex,dimens*sizeof(TRegionIndex));
@@ -350,6 +397,23 @@ begin
         coords.SetCoords(nil,0);
     end;
     obj_to_arv(coords,arv);
+end;
+
+procedure RegionCoords_copy(Sender:TObject); // c2 = copyCoords c1
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    coords:TObject;
+    new_coords:TRegionCoords;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(2) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TRegionCoords,coords) then exit;
+    new_coords:=TRegionCoords.Create;
+    new_coords.SetCoords(PRegionIndex(TRegionCoords(coords).FValue.datahead),TRegionCoords(coords).Dimension);
+    obj_to_arv(new_coords,arv);
 end;
 
 procedure RegionCoords_distance(Sender:TObject); // dist = distance c1,c2
@@ -370,6 +434,74 @@ begin
     obj_to_arv(data,arv);
 end;
 
+procedure RegionCoords_length(Sender:TObject); // dist = length coords
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    c1:TObject;
+    data:TData;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TRegionCoords,c1) then exit;
+    data:=TData.Create;
+    data.FValue.AsDouble:=TRegionCoords(c1).Length;
+    obj_to_arv(data,arv);
+end;
+
+procedure RegionCoords_add(Sender:TObject); // c1 . add c2
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    c1,c2:TObject;
+    data:TData;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TRegionCoords,c1) then exit;
+    if not AAuf.TryArgToObject(2,TRegionCoords,c2) then exit;
+    TRegionCoords(c1).Add(c2 as TRegionCoords);
+end;
+
+procedure RegionCoords_sub(Sender:TObject); // c1 . sub c2
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    c1,c2:TObject;
+    data:TData;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TRegionCoords,c1) then exit;
+    if not AAuf.TryArgToObject(2,TRegionCoords,c2) then exit;
+    TRegionCoords(c1).Sub(c2 as TRegionCoords);
+end;
+
+procedure RegionCoords_jumpIfValid(Sender:TObject); // coords . valid? :addr
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    coords:TObject;
+    addr:pRam;
+    method_name:string;
+    res,is_not,is_call:boolean;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(3) then exit;
+    if not AAuf.TryArgToObject(1,TRegionCoords,coords) then exit;
+    if not AAuf.TryArgToAddr(2,addr) then exit;
+    method_name:=AAuf.args[0];
+    compare_jump_mode(method_name,is_not,is_call);
+    res:=TRegionCoords(coords).Dimension>0;
+    if res xor is_not then begin
+        if is_call then AAuf.Script.push_addr(AufScpt.ScriptLines,AufScpt.ScriptName,addr)
+        else AufScpt.jump_addr(addr);
+    end;
+end;
 
 procedure newRegion(Sender:TObject); // region = newRegion name dimension
 var AufScpt:TAufScript;
@@ -424,7 +556,7 @@ begin
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
     if not AAuf.TryArgToObject(3,TRegionCoords,coords) then exit;
     item:=TRegion(region).GetItem(TRegionCoords(coords));
-    obj_to_arv(item,arv);
+    if item<>nil then obj_to_arv(item,arv) else obj_to_arv(DataNil(),arv);
 end;
 
 procedure Region_itemCoords(Sender:TObject); // coords = itemCoords region item
@@ -441,7 +573,7 @@ begin
     if not AAuf.TryArgToObject(2,TRegion,region) then exit;
     if not AAuf.TryArgToObject(3,TItem,item) then exit;
     coords:=TRegion(region).ItemIndice(TItem(item));
-    obj_to_arv(coords,arv);
+    if coords<>nil then obj_to_arv(coords,arv) else obj_to_arv(ZeroRegionCoords(),arv);
 end;
 
 procedure Region_setMax(Sender:TObject); // region . setMax coords...
@@ -509,20 +641,43 @@ var AufScpt:TAufScript;
     AAuf:TAuf;
     arv:TAufRamVar;
     player,item:TObject;
-    tag:string;
+    //tag:string;
+    ptag:PTuttoInUnoDirectData;
 begin
     AufScpt:=Sender as TAufScript;
     AAuf:=AufScpt.Auf as TAuf;
     if not AAuf.CheckArgs(4) then exit;
     if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
     if not AAuf.TryArgToObject(2,TPlayer,player) then exit;
-    if not AAuf.TryArgToString(3,tag) then exit;
-    item:=TPlayer(player).AskForItem(tag);
+    //if not AAuf.TryArgToString(3,tag) then exit;
+    ptag:=GetArgData(AAuf,3);
+    if ptag^.datatype<>dtString then begin
+        AufScpt.send_error('第3个参数不是字符串类型，代码未执行');
+        exit;
+    end;
+    item:=TPlayer(player).AskForItem(ptag^.AsString);
     obj_to_arv(item,arv);
     if item<>nil then
         AufScpt.writeln(Format('玩家“%s”选择物品“%s”',[TPlayer(player).Value.AsString,TItem(item).Value.AsString]))
     else
         AufScpt.writeln('玩家“'+TPlayer(player).Value.AsString+'”未选择物品');
+end;
+
+procedure askForCoords(Sender:TObject); // coords = askForCoords player dimens
+var AufScpt:TAufScript;
+    AAuf:TAuf;
+    arv:TAufRamVar;
+    player,data,region:TObject;
+begin
+    AufScpt:=Sender as TAufScript;
+    AAuf:=AufScpt.Auf as TAuf;
+    if not AAuf.CheckArgs(4) then exit;
+    if not AAuf.TryArgToARV(1,8,8,[ARV_FixNum],arv) then exit;
+    if not AAuf.TryArgToObject(2,TPlayer,player) then exit;
+    if not AAuf.TryArgToObject(3,TRegion,region) then exit;
+    data:=TPlayer(player).AskForCoords(region as TRegion);
+    if data<>nil then obj_to_arv(data,arv) else obj_to_arv(ZeroRegionCoords(),arv);
+    AufScpt.writeln('玩家“'+TPlayer(player).Value.AsString+'”选择坐标'+TRegionCoords(data).Value.ToString);
 end;
 
 procedure Data_new(Sender:TObject); // data = newData value
@@ -576,23 +731,23 @@ begin
             case value^.datatype of
                 dtInteger:TData(data).Value.AsInteger:=TData(data).Value.AsInteger+value^.AsInteger;
                 dtFloat:TData(data).Value.AsInteger:=TData(data).Value.AsInteger+trunc(value^.AsDouble);
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
             dtFloat:
             case value^.datatype of
                 dtInteger:TData(data).Value.AsDouble:=TData(data).Value.AsDouble+value^.AsInteger;
                 dtFloat:TData(data).Value.AsDouble:=TData(data).Value.AsDouble+value^.AsDouble;
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
             dtString:
             case value^.datatype of
                 dtString:TData(data).Value.AsString:=TData(data).Value.AsString+value^.AsString;
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
-            else raise Exception.Create('');
+            else raise ETuttoInUnoSyntaxError.Create('');
         end;
       except
-        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).FValue.ToString,value^.ToString]));
+        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).Value.ToString,value^.ToString]));
       end;
     finally
         ReleaseDirectData(value);
@@ -617,18 +772,18 @@ begin
             case value^.datatype of
                 dtInteger:TData(data).Value.AsInteger:=TData(data).Value.AsInteger-value^.AsInteger;
                 dtFloat:TData(data).Value.AsInteger:=TData(data).Value.AsInteger-trunc(value^.AsDouble);
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
             dtFloat:
             case value^.datatype of
                 dtInteger:TData(data).Value.AsDouble:=TData(data).Value.AsDouble-value^.AsInteger;
                 dtFloat:TData(data).Value.AsDouble:=TData(data).Value.AsDouble-value^.AsDouble;
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
-            else raise Exception.Create('');
+            else raise ETuttoInUnoSyntaxError.Create('');
         end;
       except
-        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).FValue.ToString,value^.ToString]));
+        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).Value.ToString,value^.ToString]));
       end;
     finally
         ReleaseDirectData(value);
@@ -653,18 +808,18 @@ begin
             case value^.datatype of
                 dtInteger:TData(data).Value.AsInteger:=TData(data).Value.AsInteger*value^.AsInteger;
                 dtFloat:TData(data).Value.AsInteger:=trunc(TData(data).Value.AsInteger*value^.AsDouble);
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
             dtFloat:
             case value^.datatype of
                 dtInteger:TData(data).Value.AsDouble:=TData(data).Value.AsDouble*value^.AsInteger;
                 dtFloat:TData(data).Value.AsDouble:=TData(data).Value.AsDouble*value^.AsDouble;
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
-            else raise Exception.Create('');
+            else raise ETuttoInUnoSyntaxError.Create('');
         end;
       except
-        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).FValue.ToString,value^.ToString]));
+        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).Value.ToString,value^.ToString]));
       end;
     finally
         ReleaseDirectData(value);
@@ -689,18 +844,18 @@ begin
           case value^.datatype of
               dtInteger:TData(data).Value.AsInteger:=TData(data).Value.AsInteger div value^.AsInteger;
               dtFloat:TData(data).Value.AsInteger:=TData(data).Value.AsInteger div trunc(value^.AsDouble);
-              else raise Exception.Create('');
+              else raise ETuttoInUnoSyntaxError.Create('');
           end;
           dtFloat:
           case value^.datatype of
               dtInteger:TData(data).Value.AsDouble:=TData(data).Value.AsDouble / value^.AsInteger;
               dtFloat:TData(data).Value.AsDouble:=TData(data).Value.AsDouble / value^.AsDouble;
-              else raise Exception.Create('');
+              else raise ETuttoInUnoSyntaxError.Create('');
           end;
-          else raise Exception.Create('');
+          else raise ETuttoInUnoSyntaxError.Create('');
         end;
       except
-        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).FValue.ToString,value^.ToString]));
+        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).Value.ToString,value^.ToString]));
       end;
     finally
         ReleaseDirectData(value);
@@ -725,12 +880,12 @@ begin
             case value^.datatype of
                 dtInteger:TData(data).Value.AsInteger:=TData(data).Value.AsInteger mod value^.AsInteger;
                 dtFloat:TData(data).Value.AsInteger:=TData(data).Value.AsInteger mod trunc(value^.AsDouble);
-                else raise Exception.Create('');
+                else raise ETuttoInUnoSyntaxError.Create('');
             end;
-            else raise Exception.Create('');
+            else raise ETuttoInUnoSyntaxError.Create('');
         end;
       except
-        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).FValue.ToString,value^.ToString]));
+        AufScpt.send_error(Format('%s与%s不能直接计算，代码未执行',[TData(data).Value.ToString,value^.ToString]));
       end;
     finally
         ReleaseDirectData(value);
@@ -772,7 +927,7 @@ begin
                 else exit;
             end;
             if sa=sb then result:='=' else result:='!';
-        end
+        end;
         else exit;
     end;
 end;
@@ -844,27 +999,45 @@ begin
         add_func('tiu.deltag',@delTag,'tag','移除标签');
         add_func('getattribute',@getAttribute,'key','读取属性值',TData);
         add_func('inspectattribute',@inspectAttribute,'data','显示属性值');
+        add_func('tiu.void?',@JumpIfNil,':addr','等于nil则跳转');
+        add_func('tiu.nvoid?',@JumpIfNil,':addr','不等于nil则跳转');
+        add_func('tiu.void?c',@JumpIfNil,':addr','等于nil则跳转，并压栈');
+        add_func('tiu.nvoid?c',@JumpIfNil,':addr','不等于nil则跳转，并压栈');
 
+        //Player
         add_func('newplayerproto',@newPlayerPrototype,'','创建玩家原型',TPlayer);
         add_func('newplayer',@newPlayer,'玩家原型,玩家名称','创建新玩家',TPlayer);
         add_func('tiu.player.win',@Player_win,'','宣布玩家胜利');
 
+        //PlayerLoop
         add_func('newplayerloop',@PlayerLoop_new,'[player, ...]','创建玩家循环',TPlayerLoop);
         add_func('tiu.playerloop.rselect',@PlayerLoop_randomSelect,'','随机选择一个玩家开始');
         add_func('tiu.playerloop.nextplayer',@PlayerLoop_nextPlayer,'','下一个玩家');
+        add_func('tiu.playerloop.prevplayer',@PlayerLoop_prevPlayer,'','上一个玩家');
         add_func('currentplayer',@PlayerLoop_currentPlayer,'','返回当前玩家',TPlayer);
 
+        //Item
         add_func('newitemproto',@newItemPrototype,'','创建物品原型',TItem);
         add_func('newitem',@newItem,'物品原型,物品名称','创建新物品',TItem);
-        add_func('tiu.item.moveto',@Item_moveTo,'','移动物品到区域');
-        add_func('tiu.item.in?',@Item_jumpIfIn,'','判断物品是否在区域内，在则跳转');
-        add_func('tiu.item.nin?',@Item_jumpIfIn,'','判断物品是否在区域内，不在则跳转');
-        add_func('tiu.item.in?c',@Item_jumpIfIn,'','判断物品是否在区域内，在则跳转，并压栈');
-        add_func('tiu.item.nin?c',@Item_jumpIfIn,'','判断物品是否在区域内，不在则跳转，并压栈');
+        add_func('tiu.item.moveto',@Item_moveTo,'区域','移动物品到区域');
+        add_func('tiu.item.in?',@Item_jumpIfIn,'区域,addr','判断物品是否在区域内，在则跳转');
+        add_func('tiu.item.nin?',@Item_jumpIfIn,'区域,addr','判断物品是否在区域内，不在则跳转');
+        add_func('tiu.item.in?c',@Item_jumpIfIn,'区域,addr','判断物品是否在区域内，在则跳转，并压栈');
+        add_func('tiu.item.nin?c',@Item_jumpIfIn,'区域,addr','判断物品是否在区域内，不在则跳转，并压栈');
 
+        //Coords
         add_func('newcoords',@RegionCoords_new,'[x, y, z... ]','创建新坐标',TRegionCoords);
-        add_func('distance',@RegionCoords_distance,'c1,c2','创建新坐标',TData);
+        add_func('copycoords',@RegionCoords_copy,'coords','复制坐标',TRegionCoords);
+        add_func('distance',@RegionCoords_distance,'坐标1,坐标2','计算两个坐标间的距离',TData);
+        add_func('length',@RegionCoords_length,'坐标','计算坐标距原点的距离',TData);
+        add_func('tiu.coords.add',@RegionCoords_add,'坐标','坐标加法');
+        add_func('tiu.coords.sub',@RegionCoords_sub,'坐标','坐标减法');
+        add_func('tiu.coords.valid?',@RegionCoords_jumpIfValid,'addr','判断坐标是否有效，有效则跳转');
+        add_func('tiu.coords.nvalid?',@RegionCoords_jumpIfValid,'addr','判断坐标是否有效，无效则跳转');
+        add_func('tiu.coords.valid?c',@RegionCoords_jumpIfValid,'addr','判断坐标是否有效，有效则跳转，并压栈');
+        add_func('tiu.coords.nvalid?c',@RegionCoords_jumpIfValid,'addr','判断坐标是否有效，无效则跳转，并压栈');
 
+        //Region
         add_func('newregion',@newRegion,'维度','创建新区域',TRegion);
         add_func('itemcount',@Region_itemCount,'','返回区域内物品数量',TData);
         add_func('itemat',@Region_itemAt,'','返回区域内指定坐标的物品',TItem);
@@ -872,9 +1045,10 @@ begin
         add_func('tiu.region.setmax',@Region_setMax,'','设置坐标最大值');
         add_func('tiu.region.setmin',@Region_setMin,'','设置坐标最小值');
 
-
+        //Player Asking
         add_func('askfornumber',@askForNumber,'玩家,最小值,最大值','询问玩家数量',TData);
         add_func('askforitem',@askForItem,'玩家,标签','询问玩家物品',TItem);
+        add_func('askforcoords',@askForCoords,'玩家,区域','询问玩家坐标',TRegionCoords);
 
         //Data运算
         add_func('newdata',@Data_new,'value','创建新Data数值',TData);
@@ -907,6 +1081,7 @@ begin
         add_func('setattribute',@func_nil,'','仅用于高亮方案占位');
         add_func('rselect',@func_nil,'','仅用于高亮方案占位');
         add_func('nextplayer',@func_nil,'','仅用于高亮方案占位');
+        add_func('prevplayer',@func_nil,'','仅用于高亮方案占位');
         add_func('addtag',@func_nil,'','仅用于高亮方案占位');
         add_func('deltag',@func_nil,'','仅用于高亮方案占位');
         add_func('moveto',@func_nil,'','仅用于高亮方案占位');
@@ -914,6 +1089,10 @@ begin
         add_func('nin?',@func_nil,'','仅用于高亮方案占位');
         add_func('in?c',@func_nil,'','仅用于高亮方案占位');
         add_func('nin?c',@func_nil,'','仅用于高亮方案占位');
+        add_func('void?',@func_nil,'','仅用于高亮方案占位');
+        add_func('nvoid?',@func_nil,'','仅用于高亮方案占位');
+        add_func('void?c',@func_nil,'','仅用于高亮方案占位');
+        add_func('nvoid?c',@func_nil,'','仅用于高亮方案占位');
         add_func('setmax',@func_nil,'','仅用于高亮方案占位');
         add_func('setmin',@func_nil,'','仅用于高亮方案占位');
 
